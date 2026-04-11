@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Aeration Advanced Simulation</title>
+  <title>Aeration Simulation v3</title>
   <style>
     body {
       font-family: Arial;
@@ -12,6 +12,7 @@
     canvas {
       border-radius: 10px;
       margin-top: 20px;
+      background: #eaf6ff;
     }
 
     button {
@@ -26,7 +27,7 @@
 
 <body>
 
-<h2>Aeration: Plume + Mixing + DO Gradient</h2>
+<h2>Version 3 – Plume + Mixing + Distribution</h2>
 
 <canvas id="tank" width="700" height="350"></canvas>
 
@@ -43,6 +44,12 @@
   <button onclick="setFlow('high')">High</button>
 </div>
 
+<div>
+  Distribution:
+  <button onclick="setDist('even')">Even</button>
+  <button onclick="setDist('uneven')">Uneven</button>
+</div>
+
 <script>
 const canvas = document.getElementById("tank");
 const ctx = canvas.getContext("2d");
@@ -52,9 +59,11 @@ let particles = [];
 
 let bubbleType = "fine";
 let flow = "medium";
+let dist = "even";
 
 function setBubble(t){ bubbleType = t; create(); }
 function setFlow(f){ flow = f; create(); }
+function setDist(d){ dist = d; create(); }
 
 // Create bubbles + flow particles
 function create(){
@@ -63,21 +72,22 @@ function create(){
 
   let count = flow === "low" ? 40 : flow === "medium" ? 70 : 110;
 
+  let center = dist === "even" ? canvas.width/2 : canvas.width * 0.25;
+
   for(let i=0;i<count;i++){
     bubbles.push({
-      x: canvas.width/2 + (Math.random()-0.5)*60,
+      x: center + (Math.random()-0.5)*60,
       y: canvas.height-20,
       size: bubbleType==="fine"?4:10,
       speed: (bubbleType==="fine"?0.8:2.2)*(flow==="high"?1.2:1),
     });
   }
 
-  // Flow particles (for circulation loops)
+  // circulation particles
   for(let i=0;i<80;i++){
     particles.push({
       x: Math.random()*canvas.width,
-      y: Math.random()*canvas.height,
-      angle: Math.random()*Math.PI*2
+      y: Math.random()*canvas.height
     });
   }
 }
@@ -85,13 +95,13 @@ function create(){
 // DO gradient
 function drawGradient(){
   let grad = ctx.createLinearGradient(0,40,0,canvas.height);
-  grad.addColorStop(0,"#d4f4ff");   // high DO (top)
-  grad.addColorStop(1,"#5aa9e6");   // low DO (bottom)
+  grad.addColorStop(0,"#d4f4ff");
+  grad.addColorStop(1,"#5aa9e6");
   ctx.fillStyle = grad;
   ctx.fillRect(0,40,canvas.width,canvas.height);
 }
 
-// Tank + labels
+// Tank
 function drawTank(){
   drawGradient();
 
@@ -102,17 +112,20 @@ function drawTank(){
   ctx.lineTo(canvas.width,40);
   ctx.stroke();
 
-  // diffuser
+  // diffuser pipe
   ctx.fillStyle="#333";
   ctx.fillRect(0,canvas.height-15,canvas.width,5);
 
-  // plume zone
+  // plume zone highlight
+  let center = dist === "even" ? canvas.width/2 : canvas.width * 0.25;
   ctx.fillStyle="rgba(0,150,255,0.15)";
-  ctx.fillRect(canvas.width/2-40,40,80,canvas.height);
+  ctx.fillRect(center-40,40,80,canvas.height);
 
+  // labels
   ctx.fillStyle="#000";
-  ctx.fillText("Plume", canvas.width/2-20,60);
-  ctx.fillText("Circulation", 50,60);
+  ctx.fillText("Plume", center-20,60);
+  ctx.fillText("Mixing", 20,60);
+  ctx.fillText("Mixing", canvas.width-100,60);
 }
 
 // Bubbles
@@ -131,7 +144,7 @@ function drawBubbles(){
   });
 }
 
-// Circulation loops
+// Flow (circulation loops)
 function drawFlow(){
   particles.forEach(p=>{
     ctx.beginPath();
@@ -139,22 +152,20 @@ function drawFlow(){
     ctx.arc(p.x,p.y,2,0,Math.PI*2);
     ctx.fill();
 
-    // circular motion logic
-    let cx = canvas.width/2;
+    let cx = dist === "even" ? canvas.width/2 : canvas.width * 0.25;
     let cy = canvas.height/2;
 
     let dx = p.x - cx;
     let dy = p.y - cy;
 
-    let dist = Math.sqrt(dx*dx+dy*dy);
+    let distVal = Math.sqrt(dx*dx + dy*dy) || 1;
 
     let speed = flow==="low"?0.5:flow==="medium"?1:1.5;
 
-    // swirl effect
-    p.x += (-dy/dist)*speed;
-    p.y += (dx/dist)*speed;
+    p.x += (-dy/distVal)*speed;
+    p.y += (dx/distVal)*speed;
 
-    // reset if out
+    // boundary reset
     if(p.x<0) p.x=canvas.width;
     if(p.x>canvas.width) p.x=0;
     if(p.y<40) p.y=canvas.height;
@@ -173,6 +184,7 @@ function draw(){
   requestAnimationFrame(draw);
 }
 
+// init
 create();
 draw();
 </script>
