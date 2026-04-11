@@ -112,13 +112,18 @@ function createBubbles() {
     let source = points[Math.floor(Math.random() * points.length)];
 
     let size = bubbleType === "fine" ? 4 : 10;
-    let speed = bubbleType === "fine" ? 0.8 : 2.5;
+
+    let baseSpeed = bubbleType === "fine" ? 0.8 : 2.5;
+    let flowFactor = flow === "low" ? 0.8 : flow === "medium" ? 1 : 1.3;
+
+    let speed = baseSpeed * flowFactor;
 
     bubbles.push({
       x: source + (Math.random() * 10 - 5),
       y: canvas.height - 20,
       size: size,
-      speed: speed
+      speed: speed,
+      vx: (Math.random() - 0.5) * (flow === "high" ? 1.5 : 0.5)
     });
   }
 
@@ -128,8 +133,8 @@ function createBubbles() {
 function updateStats() {
   let contactTime = bubbleType === "fine" ? 8 : 3;
 
-  if (flow === "low") contactTime *= 1.1;
-  if (flow === "high") contactTime *= 0.9;
+  if (flow === "low") contactTime *= 0.9;
+  if (flow === "high") contactTime *= 1.05;
 
   if (dist === "uneven") contactTime *= 0.65;
 
@@ -169,21 +174,25 @@ function drawBubbles() {
   bubbles.forEach(b => {
     ctx.beginPath();
 
-    // Color coding
     if (bubbleType === "fine") {
-      ctx.fillStyle = "#ffffff"; // white
+      ctx.fillStyle = "#ffffff";
     } else {
-      ctx.fillStyle = "#ffcc66"; // light orange
+      ctx.fillStyle = "#ffcc66";
     }
 
     ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
     ctx.fill();
 
     b.y -= b.speed;
+    b.x += b.vx;
 
     if (b.y < 40) {
       b.y = canvas.height - 20;
     }
+
+    // Keep bubbles inside tank horizontally
+    if (b.x < 0) b.x = 0;
+    if (b.x > canvas.width) b.x = canvas.width;
   });
 }
 
