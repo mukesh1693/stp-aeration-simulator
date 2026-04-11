@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aeration Simulator - Refined</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      text-align: center;
+    }
+
+    canvas {
+      background: #cfe8ff;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #888;
+      cursor: pointer;
+    }
+
+    .stats {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Aeration Quality Over Quantity</h2>
+
+<canvas id="tank" width="700" height="320"></canvas>
+
+<div>
+  Bubble Size:
+  <button onclick="setBubble('fine')">Fine</button>
+  <button onclick="setBubble('coarse')">Coarse</button>
+</div>
+
+<div>
+  Air Flow:
+  <button onclick="setFlow('low')">Low</button>
+  <button onclick="setFlow('medium')">Medium</button>
+  <button onclick="setFlow('high')">High</button>
+</div>
+
+<div>
+  Distribution:
+  <button onclick="setDist('even')">Even</button>
+  <button onclick="setDist('uneven')">Uneven</button>
+</div>
+
+<div class="stats">
+  Contact Time: <span id="time">0</span> sec |
+  Efficiency: <span id="eff">0</span> %
+</div>
+
+<script>
+const canvas = document.getElementById("tank");
+const ctx = canvas.getContext("2d");
+
+let bubbles = [];
+
+let bubbleType = "fine";
+let flow = "medium";
+let dist = "even";
+
+function setBubble(type) {
+  bubbleType = type;
+  createBubbles();
+}
+
+function setFlow(f) {
+  flow = f;
+  createBubbles();
+}
+
+function setDist(d) {
+  dist = d;
+  createBubbles();
+}
+
+function getDiffuserPoints() {
+  let points = [];
+
+  if (dist === "even") {
+    for (let i = 50; i < canvas.width; i += 80) {
+      points.push(i);
+    }
+  } else {
+    for (let i = 50; i < 200; i += 40) {
+      points.push(i);
+    }
+  }
+
+  return points;
+}
+
+function createBubbles() {
+  bubbles = [];
+
+  let count = flow === "low" ? 25 : flow === "medium" ? 50 : 80;
+
+  let points = getDiffuserPoints();
+
+  for (let i = 0; i < count; i++) {
+    let source = points[Math.floor(Math.random() * points.length)];
+
+    let size = bubbleType === "fine" ? 4 : 10;
+    let speed = bubbleType === "fine" ? 0.8 : 2.5;
+
+    bubbles.push({
+      x: source + (Math.random() * 10 - 5),
+      y: canvas.height - 20,
+      size: size,
+      speed: speed
+    });
+  }
+
+  updateStats();
+}
+
+function updateStats() {
+  let contactTime = bubbleType === "fine" ? 8 : 3;
+
+  if (flow === "low") contactTime *= 1.1;
+  if (flow === "high") contactTime *= 0.9;
+
+  if (dist === "uneven") contactTime *= 0.65;
+
+  let efficiency = contactTime * 10;
+  if (efficiency > 100) efficiency = 100;
+
+  document.getElementById("time").innerText = contactTime.toFixed(1);
+  document.getElementById("eff").innerText = Math.round(efficiency);
+}
+
+function drawTank() {
+  // Water line
+  ctx.strokeStyle = "#0077cc";
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(0, 40);
+  ctx.lineTo(canvas.width, 40);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Diffuser pipe
+  ctx.fillStyle = "#333";
+  ctx.fillRect(0, canvas.height - 15, canvas.width, 5);
+
+  // Diffuser holes
+  let points = getDiffuserPoints();
+  ctx.fillStyle = "orange";
+
+  points.forEach(x => {
+    ctx.beginPath();
+    ctx.arc(x, canvas.height - 12, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawBubbles() {
+  bubbles.forEach(b => {
+    ctx.beginPath();
+
+    // Color coding
+    if (bubbleType === "fine") {
+      ctx.fillStyle = "#ffffff"; // white
+    } else {
+      ctx.fillStyle = "#ffcc66"; // light orange
+    }
+
+    ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    b.y -= b.speed;
+
+    if (b.y < 40) {
+      b.y = canvas.height - 20;
+    }
+  });
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawTank();
+  drawBubbles();
+
+  requestAnimationFrame(draw);
+}
+
+createBubbles();
+draw();
+</script>
+
+</body>
+</html>
