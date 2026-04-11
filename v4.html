@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aeration Simulation v4</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f6f8;
+      text-align: center;
+    }
+
+    canvas {
+      border-radius: 10px;
+      margin-top: 20px;
+      background: #eaf6ff;
+    }
+
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #888;
+      cursor: pointer;
+    }
+
+    .stats {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Version 4 – Depth & Energy (Aeration Model)</h2>
+
+<canvas id="tank" width="700" height="400"></canvas>
+
+<div>
+  Bubble:
+  <button onclick="setBubble('fine')">Fine</button>
+  <button onclick="setBubble('coarse')">Coarse</button>
+</div>
+
+<div>
+  Flow:
+  <button onclick="setFlow('low')">Low</button>
+  <button onclick="setFlow('medium')">Medium</button>
+  <button onclick="setFlow('high')">High</button>
+</div>
+
+<div>
+  Depth:
+  <input type="range" min="3" max="6" step="0.5" value="4.5" oninput="setDepth(this.value)">
+</div>
+
+<div class="stats">
+  Depth: <span id="depthVal">4.5</span> m |
+  Blower Head: <span id="head">4.5</span> m |
+  Energy Level: <span id="energy">Medium</span>
+</div>
+
+<script>
+const canvas = document.getElementById("tank");
+const ctx = canvas.getContext("2d");
+
+let bubbles = [];
+let particles = [];
+
+let bubbleType = "fine";
+let flow = "medium";
+
+// visual depth in pixels (mapped)
+let depth = 300;
+
+// default real depth
+let realDepth = 4.5;
+
+function setBubble(t){ bubbleType = t; create(); }
+function setFlow(f){ flow = f; create(); }
+
+function setDepth(d){
+  realDepth = parseFloat(d);
+
+  // map 3–6 m → 200–360 px
+  depth = 200 + ((realDepth - 3) / 3) * 160;
+
+  document.getElementById("depthVal").innerText = realDepth.toFixed(1);
+
+  updateEnergy();
+  create();
+}
+
+// Create bubbles + flow
+function create(){
+  bubbles = [];
+  particles = [];
+
+  let count = flow === "low" ? 40 : flow === "medium" ? 70 : 110;
+
+  for(let i=0;i<count;i++){
+    bubbles.push({
+      x: canvas.width/2 + (Math.random()-0.5)*60,
+      y: depth,
+      size: bubbleType==="fine"?4:10,
+      speed: (bubbleType==="fine"?0.8:2.2)*(flow==="high"?1.2:1),
+    });
+  }
+
+  for(let i=0;i<80;i++){
+    particles.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*depth
+    });
+  }
+}
+
+// Energy logic
+function updateEnergy(){
+  let head = (realDepth * 1.2).toFixed(1);
+
+  let energy = realDepth < 4 ? "Low" :
+               realDepth < 5 ? "Medium" : "High";
+
+  document.getElementById("head").innerText = head;
+  document.getElementById("energy").innerText = energy;
+}
+
+// DO gradient
+function drawGradient(){
+  let grad = ctx.createLinearGradient(0,40,0,depth);
+  grad.addColorStop(0,"#d4f4ff");
+  grad.addColorStop(1,"#5aa9e6");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,40,canvas.width,depth-40);
+}
+
+// Tank
+function drawTank(){
+  drawGradient();
+
+  ctx.strokeStyle="#0077cc";
+  ctx.beginPath();
+  ctx.moveTo(0,40);
+  ctx.lineTo(canvas.width,40);
+  ctx.stroke();
+
+  ctx.fillStyle="#333";
+  ctx.fillRect(0,depth,canvas.width,5);
+
+  ctx.fillStyle="rgba(0,150,255,0.15)";
+  ctx.fillRect(canvas.width/2-40,40,80,depth);
+
+  ctx.fillStyle="#000";
+  ctx.fillText("Plume Zone", canvas.width/2-35,60);
+}
+
+// Bubbles
+function drawBubbles(){
+  bubbles.forEach(b=>{
+    ctx.beginPath();
+    ctx.fillStyle = bubbleType==="fine"?"#ffffff":"#ffcc66";
+    ctx.arc(b.x,b.y,b.size,0,Math.PI*2);
+    ctx.fill();
+
+    b.y -= b.speed;
+
+    if(b.y < 40){
+      b.y = depth;
+    }
+  });
+}
+
+// Circulation
+function drawFlow(){
+  particles.forEach(p=>{
+    ctx.beginPath();
+    ctx.fillStyle="rgba(0,0,0,0.2)";
+    ctx.arc(p.x,p.y,2,0,Math.PI*2);
+    ctx.fill();
+
+    let cx = canvas.width/2;
+    let cy = depth/2;
+
+    let dx = p.x - cx;
+    let dy = p.y - cy;
+
+    let dist = Math.sqrt(dx*dx + dy*dy) || 1;
+
+    let speed = flow==="low"?0.5:flow==="medium"?1:1.5;
+
+    p.x += (-dy/dist)*speed;
+    p.y += (dx/dist)*speed;
+
+    if(p.x < 0) p.x = canvas.width;
+    if(p.x > canvas.width) p.x = 0;
+    if(p.y < 40) p.y = depth;
+    if(p.y > depth) p.y = 40;
+  });
+}
+
+// Animation
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawTank();
+  drawFlow();
+  drawBubbles();
+
+  requestAnimationFrame(draw);
+}
+
+// Init
+updateEnergy();
+create();
+draw();
+</script>
+
+</body>
+</html>
