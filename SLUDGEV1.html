@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sludge Tank – Mixing vs Clogging</title>
+  <style>
+    body { text-align:center; font-family:Arial; background:#f4f6f8; }
+    button, input { margin:5px; padding:6px; }
+  </style>
+</head>
+
+<body>
+
+<h3>Coarse vs Fine Bubble in Sludge Tank</h3>
+
+<div>
+  <button onclick="setBubble('fine')">Fine Bubble</button>
+  <button onclick="setBubble('coarse')">Coarse Bubble</button>
+</div>
+
+<div>
+  Sludge Level:
+  <input type="range" min="1" max="5" value="3" oninput="setSludge(this.value)">
+</div>
+
+<div>
+  Energy: <span id="energy">Low</span> |
+  Clogging: <span id="clog">0%</span>
+</div>
+
+<canvas id="tank" width="700" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("tank");
+const ctx = canvas.getContext("2d");
+
+let bubbles = [];
+let particles = [];
+
+let bubbleType = "fine";
+let sludgeLevel = 3;
+let clogging = 0;
+
+function setBubble(t){
+  bubbleType = t;
+  clogging = 0;
+  init();
+}
+
+function setSludge(val){
+  sludgeLevel = parseInt(val);
+}
+
+function init(){
+  bubbles = [];
+  particles = [];
+
+  for(let i=0;i<60;i++){
+    bubbles.push({
+      x: Math.random()*700,
+      y: 350
+    });
+  }
+
+  for(let i=0;i<120;i++){
+    particles.push({
+      x: Math.random()*700,
+      y: Math.random()*400
+    });
+  }
+}
+
+// ENERGY LOGIC (clear difference)
+function updateEnergy(){
+  let energy;
+
+  if(bubbleType==="fine"){
+    energy = "Low";
+  } else {
+    energy = sludgeLevel >=4 ? "High" : "Medium";
+  }
+
+  document.getElementById("energy").innerText = energy;
+  document.getElementById("clog").innerText = Math.round(clogging) + "%";
+}
+
+// TANK + DIFFUSER
+function drawTank(){
+  ctx.fillStyle = "#7a5c3a";
+  ctx.fillRect(0,0,700,400);
+
+  // diffuser pipe
+  ctx.fillStyle = bubbleType==="fine" && clogging>40 ? "#111" : "#333";
+  ctx.fillRect(0,360,700,10);
+
+  // clogging label
+  if(bubbleType==="fine" && clogging>40){
+    ctx.fillStyle = "red";
+    ctx.fillText("Diffuser Clogging", 280, 350);
+  }
+}
+
+// SLUDGE PARTICLES
+function drawParticles(){
+  ctx.fillStyle = "#4b3425";
+
+  particles.forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,3 + sludgeLevel,0,Math.PI*2);
+    ctx.fill();
+
+    if(bubbleType==="fine"){
+      // STRONG SETTLING
+      p.y += 1 * sludgeLevel;
+    } else {
+      // STRONG MIXING
+      p.y += (Math.random()-0.5)*(6 + sludgeLevel*3);
+      p.x += (Math.random()-0.5)*(5);
+    }
+
+    if(p.y>400) p.y=380;
+    if(p.y<0) p.y=20;
+  });
+}
+
+// BUBBLES
+function drawBubbles(){
+
+  bubbles.forEach((b,i)=>{
+
+    // reduce active bubbles with clogging
+    if(bubbleType==="fine" && i > bubbles.length*(1 - clogging/100)){
+      return;
+    }
+
+    ctx.beginPath();
+    ctx.fillStyle = bubbleType==="fine"?"#ffffff":"#ffcc66";
+
+    let size = bubbleType==="fine"?4:10;
+    ctx.arc(b.x,b.y,size,0,Math.PI*2);
+    ctx.fill();
+
+    let speed = bubbleType==="fine"?1:2.5;
+
+    if(bubbleType==="fine"){
+      speed *= (1 - clogging/100);
+    }
+
+    b.y -= speed;
+
+    if(b.y<0){
+      b.y = 350;
+    }
+  });
+
+  // clogging growth (clear effect)
+  if(bubbleType==="fine"){
+    clogging += 0.15 * sludgeLevel;
+    if(clogging > 90) clogging = 90;
+  }
+}
+
+// DRAW LOOP
+function draw(){
+  ctx.clearRect(0,0,700,400);
+
+  drawTank();
+  drawParticles();
+  drawBubbles();
+  updateEnergy();
+
+  requestAnimationFrame(draw);
+}
+
+init();
+draw();
+</script>
+
+</body>
+</html>
